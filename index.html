@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Efetividade & Check-in — SPOT × Bauducco</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inconsolata:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            /* ── Paleta Bauducco ── */
+            --amarelo:       #FFB81C;
+            --amarelo-light: #FFF4D6;
+            --amarelo-mid:   #FFE59A;
+            --vermelho:      #DA291C;
+            --vermelho-light:#FDECEA;
+            --vermelho-mid:  #F9BFBA;
+            --chocolate:     #704241;
+            --chocolate-light:#F5EDEC;
+            --chocolate-mid: #D4ADAC;
+            --creme:         #F2F0A1;
+            --creme-dark:    #E0DE60;
+
+            /* ── Neutros ── */
+            --page-bg:   #FDFCF7;
+            --white:     #FFFFFF;
+            --border:    #EDE9DC;
+            --border-mid:#DDD8C8;
+            --text-1:    #2A1A1A;
+            --text-2:    #5C3D3C;
+            --text-3:    #9C847F;
+
+            --radius-sm: 8px;
+            --radius-md: 14px;
+            --radius-lg: 20px;
+            --shadow-sm: 0 1px 3px rgba(112,66,65,.07), 0 1px 2px rgba(112,66,65,.05);
+            --shadow-md: 0 4px 18px rgba(112,66,65,.10), 0 1px 4px rgba(112,66,65,.06);
+            --shadow-lg: 0 12px 40px rgba(112,66,65,.12), 0 2px 8px rgba(112,66,65,.07);
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background: var(--page-bg);
+            color: var(--text-1);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        /* ── stripe topo ── */
+        .top-stripe {
+            height: 4px;
+            background: linear-gradient(90deg, var(--vermelho) 0%, var(--amarelo) 50%, var(--vermelho) 100%);
+        }
+
+        /* ── HEADER ── */
+        header {
+            background: var(--white);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .header-inner {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 28px;
+            height: 66px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+        }
+
+        .header-logos {
+            display: flex;
+            align-items: center;
+        }
+        .header-logos img { height: 32px; object-fit: contain; }
+        .logo-sep {
+            width: 1px;
+            height: 26px;
+            background: var(--border-mid);
+            margin: 0 16px;
+        }
+
+        .header-title {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+        }
+        .header-title-text {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-2);
+            letter-spacing: .02em;
+        }
+        .header-title-text .badge-live {
+            background: var(--vermelho);
+            color: #fff;
+            font-size: 9px;
+            font-weight: 800;
+            letter-spacing: .10em;
+            text-transform: uppercase;
+            padding: 3px 8px;
+            border-radius: 100px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .badge-live .dot {
+            width: 5px; height: 5px;
+            border-radius: 50%;
+            background: #fff;
+            animation: blink 1.4s infinite;
+        }
+        @keyframes blink {
+            0%,100% { opacity:1; } 50% { opacity:.3; }
+        }
+
+        .btn-refresh {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            background: var(--vermelho);
+            color: #fff;
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 9px 18px;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: .03em;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(218,41,28,.30);
+            transition: background .15s, box-shadow .15s, transform .12s;
+        }
+        .btn-refresh:hover {
+            background: #C02015;
+            box-shadow: 0 4px 16px rgba(218,41,28,.40);
+            transform: translateY(-1px);
+        }
+        .btn-refresh:active { transform: none; }
+
+        /* ── PAGE BODY ── */
+        .page-body {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 28px 28px 60px;
+        }
+
+        /* ── SECTION LABEL ── */
+        .section-label {
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: .13em;
+            text-transform: uppercase;
+            color: var(--text-3);
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .section-label::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        /* ── KPI GRID ── */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+        @media (max-width: 900px) { .kpi-grid { grid-template-columns: repeat(2,1fr); } }
+        @media (max-width: 520px) { .kpi-grid { grid-template-columns: 1fr; } }
+
+        .kpi-card {
+            background: var(--white);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 22px 22px 18px;
+            box-shadow: var(--shadow-sm);
+            position: relative;
+            overflow: hidden;
+            transition: box-shadow .2s, transform .2s;
+            animation: fadeUp .4s both;
+        }
+        .kpi-card::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: 3px;
+            border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+        }
+        .kpi-card.c-amarelo::after  { background: var(--amarelo); }
+        .kpi-card.c-vermelho::after { background: var(--vermelho); }
+        .kpi-card.c-choco::after    { background: var(--chocolate); }
+        .kpi-card.c-creme::after    { background: var(--creme-dark); }
+
+        .kpi-card:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+        .kpi-card:nth-child(1) { animation-delay: .04s; }
+        .kpi-card:nth-child(2) { animation-delay: .09s; }
+        .kpi-card:nth-child(3) { animation-delay: .14s; }
+        .kpi-card:nth-child(4) { animation-delay: .19s; }
+
+        @keyframes fadeUp {
+            from { opacity:0; transform:translateY(14px); }
+            to   { opacity:1; transform:translateY(0); }
+        }
+
+        .kpi-top {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .kpi-icon {
+            width: 42px; height: 42px;
+            border-radius: 11px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 17px;
+            flex-shrink: 0;
+        }
+        .kpi-icon.c-amarelo  { background: var(--amarelo-light);  color: #9A6C00; }
+        .kpi-icon.c-vermelho { background: var(--vermelho-light);  color: var(--vermelho); }
+        .kpi-icon.c-choco    { background: var(--chocolate-light); color: var(--chocolate); }
+        .kpi-icon.c-creme    { background: var(--creme);           color: #706600; }
+
+        .kpi-pill {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: .07em;
+            text-transform: uppercase;
+            padding: 3px 9px;
+            border-radius: 100px;
+        }
+        .kpi-pill.c-amarelo  { background: var(--amarelo-light);  color: #9A6C00; }
+        .kpi-pill.c-vermelho { background: var(--vermelho-light);  color: var(--vermelho); }
+        .kpi-pill.c-choco    { background: var(--chocolate-light); color: var(--chocolate); }
+        .kpi-pill.c-creme    { background: var(--creme);           color: #706600; }
+
+        .kpi-number {
+            font-size: 40px;
+            font-weight: 800;
+            color: var(--text-1);
+            line-height: 1;
+            letter-spacing: -.025em;
+        }
+        .kpi-sublabel {
+            font-size: 12px;
+            color: var(--text-3);
+            margin-top: 5px;
+            font-weight: 500;
+        }
+        .kpi-period {
+            font-size: 11px;
+            color: var(--text-3);
+            margin-top: 12px;
+            padding-top: 10px;
+            border-top: 1px solid var(--border);
+            font-weight: 500;
+        }
+
+        /* ── FILTER BAR ── */
+        .filter-bar {
+            background: var(--white);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 20px 22px;
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 24px;
+        }
+        .filter-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: flex-end;
+        }
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            min-width: 130px;
+        }
+        .filter-group.search { flex: 1; min-width: 200px; }
+
+        .filter-label {
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: .10em;
+            text-transform: uppercase;
+            color: var(--text-3);
+        }
+
+        .filter-select, .filter-input {
+            background: var(--page-bg);
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text-1);
+            padding: 9px 12px;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 13px;
+            font-weight: 500;
+            outline: none;
+            transition: border-color .18s, background .18s;
+            width: 100%;
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L6 7L11 1' stroke='%239C847F' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 32px;
+        }
+        .filter-input { background-image: none; padding-right: 12px; }
+        .filter-select:focus, .filter-input:focus {
+            border-color: var(--amarelo);
+            background-color: var(--white);
+            box-shadow: 0 0 0 3px rgba(255,184,28,.15);
+        }
+
+        .search-wrap { position: relative; }
+        .search-wrap i {
+            position: absolute; left: 11px; top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-3); font-size: 12px; pointer-events: none;
+        }
+        .search-wrap .filter-input { padding-left: 32px; }
+
+        .btn-clear {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--page-bg);
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text-2);
+            padding: 9px 14px;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background .15s, border-color .15s;
+            white-space: nowrap;
+        }
+        .btn-clear:hover { background: var(--border); border-color: var(--border-mid); }
+
+        /* ── TABLE CARD ── */
+        .table-card {
+            background: var(--white);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+        }
+
+        .table-card-header {
+            padding: 15px 22px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--amarelo-light);
+        }
+
+        .table-card-icon {
+            width: 32px; height: 32px;
+            border-radius: 8px;
+            background: var(--amarelo);
+            display: flex; align-items: center; justify-content: center;
+            color: var(--text-1);
+            font-size: 13px;
+            flex-shrink: 0;
+        }
+
+        .table-card-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-1);
+        }
+
+        .table-scroll {
+            overflow-x: auto;
+            max-height: 580px;
+            overflow-y: auto;
+        }
+        .table-scroll::-webkit-scrollbar { width: 5px; height: 5px; }
+        .table-scroll::-webkit-scrollbar-track { background: var(--page-bg); }
+        .table-scroll::-webkit-scrollbar-thumb { background: var(--amarelo-mid); border-radius: 3px; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+
+        thead { position: sticky; top: 0; z-index: 10; }
+        thead tr {
+            background: var(--chocolate);
+            border-bottom: 2px solid var(--chocolate);
+        }
+
+        th {
+            padding: 12px 16px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: .10em;
+            text-transform: uppercase;
+            color: rgba(255,255,255,.75);
+            text-align: left;
+            white-space: nowrap;
+        }
+
+        tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+        tbody tr:last-child { border-bottom: none; }
+        tbody tr:hover { background: var(--amarelo-light); }
+
+        /* zebra suave */
+        tbody tr:nth-child(even) { background: #FDFAF3; }
+        tbody tr:nth-child(even):hover { background: var(--amarelo-light); }
+
+        td { padding: 12px 16px; color: var(--text-2); vertical-align: middle; }
+
+        .td-date {
+            font-family: 'Inconsolata', monospace;
+            font-size: 12.5px;
+            font-weight: 600;
+            color: var(--text-1);
+            white-space: nowrap;
+        }
+        .td-rota  { color: var(--text-3); font-weight: 500; }
+        .td-loja  {
+            max-width: 230px; overflow: hidden;
+            text-overflow: ellipsis; white-space: nowrap;
+            font-weight: 600; color: var(--text-1);
+        }
+        .td-promotor { font-weight: 700; color: var(--chocolate); white-space: nowrap; }
+
+        /* ── BADGES ── */
+        .badge {
+            display: inline-flex; align-items: center; gap: 5px;
+            border-radius: 7px; padding: 4px 10px;
+            font-size: 11px; font-weight: 700; white-space: nowrap;
+        }
+        .badge.no-checkin {
+            background: var(--vermelho-light);
+            color: var(--vermelho);
+            border: 1px solid var(--vermelho-mid);
+        }
+        .badge.entrada {
+            background: #E8F8EE; color: #1A7A42;
+            border: 1px solid #A8DEBC;
+            font-family: 'Inconsolata', monospace; font-size: 12px;
+        }
+        .badge.saida {
+            background: var(--amarelo-light); color: #8A5C00;
+            border: 1px solid var(--amarelo-mid);
+            font-family: 'Inconsolata', monospace; font-size: 12px;
+        }
+        .badge.hora-single {
+            background: #E8F8EE; color: #1A7A42;
+            border: 1px solid #A8DEBC;
+            font-family: 'Inconsolata', monospace; font-size: 12px;
+        }
+
+        .checkin-stack { display: flex; flex-direction: column; gap: 4px; align-items: center; }
+
+        .obs-text  { color: var(--chocolate); font-style: italic; font-size: 12px; font-weight: 500; }
+        .obs-none  { color: var(--text-3); font-size: 12px; }
+
+        .empty-state {
+            padding: 56px 24px; text-align: center; color: var(--text-3);
+        }
+        .empty-state i { font-size: 32px; margin-bottom: 10px; display: block; opacity:.35; }
+        .empty-state p { font-size: 14px; }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spin { animation: spin .5s linear; }
+    </style>
+</head>
+<body>
+
+<div class="top-stripe"></div>
+
+<header>
+    <div class="header-inner">
+        <div class="header-logos">
+            <img src="LOGO_SPOT.png" alt="SPOT">
+            <div class="logo-sep"></div>
+            <img src="LOGO_BAUDUCCO.png" alt="Bauducco">
+        </div>
+
+        <div class="header-title">
+            <div class="header-title-text">
+                Check-in &amp; Efetividade — Painel Operacional
+                <span class="badge-live">
+                    <span class="dot"></span> S3
+                </span>
+            </div>
+        </div>
+
+        <button onclick="loadEfetividadeExcel()" class="btn-refresh">
+            <i class="fa-solid fa-rotate" id="icon-refresh"></i>
+            Atualizar Dados
+        </button>
+    </div>
+</header>
+
+<div class="page-body">
+
+    <div class="section-label">Métricas Gerais</div>
+
+    <div class="kpi-grid">
+        <div class="kpi-card c-amarelo">
+            <div class="kpi-top">
+                <div class="kpi-icon c-amarelo"><i class="fa-solid fa-database"></i></div>
+                <span class="kpi-pill c-amarelo">Visitas</span>
+            </div>
+            <div class="kpi-number" id="count-total-pdvs">0</div>
+            <div class="kpi-sublabel">Total de Visitas</div>
+            <div class="kpi-period" id="periodo-total-pdvs">Período: —</div>
+        </div>
+
+        <div class="kpi-card c-vermelho">
+            <div class="kpi-top">
+                <div class="kpi-icon c-vermelho"><i class="fa-solid fa-location-dot"></i></div>
+                <span class="kpi-pill c-vermelho">Locais</span>
+            </div>
+            <div class="kpi-number" id="count-total-cidades">0</div>
+            <div class="kpi-sublabel">Cidades Atendidas</div>
+            <div class="kpi-period" id="periodo-total-cidades">Período: —</div>
+        </div>
+
+        <div class="kpi-card c-choco">
+            <div class="kpi-top">
+                <div class="kpi-icon c-choco"><i class="fa-solid fa-users"></i></div>
+                <span class="kpi-pill c-choco">Equipe</span>
+            </div>
+            <div class="kpi-number" id="count-total-promotores">0</div>
+            <div class="kpi-sublabel">Promotores Ativos</div>
+            <div class="kpi-period" id="periodo-total-promotores">Período: —</div>
+        </div>
+
+        <div class="kpi-card c-creme">
+            <div class="kpi-top">
+                <div class="kpi-icon c-creme"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                <span class="kpi-pill c-creme">Alertas</span>
+            </div>
+            <div class="kpi-number" id="count-total-obs">0</div>
+            <div class="kpi-sublabel">Com Observações</div>
+            <div class="kpi-period" id="periodo-total-obs">Período: —</div>
+        </div>
+    </div>
+
+    <div class="section-label">Filtros</div>
+
+    <div class="filter-bar">
+        <div class="filter-row">
+            <div class="filter-group">
+                <label class="filter-label">Mês</label>
+                <select id="filter-mes" onchange="applyEfetividadeFilters()" class="filter-select">
+                    <option value="">Todos os Meses</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">Data</label>
+                <select id="filter-data" onchange="applyEfetividadeFilters()" class="filter-select">
+                    <option value="">Todas as Datas</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">Cidade</label>
+                <select id="filter-cidade" onchange="applyEfetividadeFilters()" class="filter-select">
+                    <option value="">Todas</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">Promotor(a)</label>
+                <select id="filter-pessoa" onchange="applyEfetividadeFilters()" class="filter-select">
+                    <option value="">Todos</option>
+                </select>
+            </div>
+            <div class="filter-group search">
+                <label class="filter-label">Buscar Loja / Termo</label>
+                <div class="search-wrap">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" id="search-input" oninput="applyEfetividadeFilters()" placeholder="Rede, loja ou observação…" class="filter-input">
+                </div>
+            </div>
+            <div style="align-self:flex-end;">
+                <button onclick="clearEfetividadeFilters()" class="btn-clear">
+                    <i class="fa-solid fa-xmark"></i> Limpar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="section-label">Registros</div>
+
+    <div class="table-card">
+        <div class="table-card-header">
+            <div class="table-card-icon"><i class="fa-solid fa-list-check"></i></div>
+            <div class="table-card-title">Registros de Presença e Check-in</div>
+        </div>
+        <div class="table-scroll">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Rota</th>
+                        <th>Cidade</th>
+                        <th>PDV / Loja</th>
+                        <th>Promotor(a)</th>
+                        <th style="text-align:center;min-width:155px;">Check-in</th>
+                        <th>Observações</th>
+                    </tr>
+                </thead>
+                <tbody id="table-checkin-body">
+                    <tr><td colspan="7"><div class="empty-state">
+                        <i class="fa-solid fa-spinner fa-spin"></i>
+                        <p>Carregando dados da planilha…</p>
+                    </div></td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    let rawEfetividadeData = [];
+    const nomeMeses = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+
+    window.addEventListener('DOMContentLoaded', loadEfetividadeExcel);
+
+    function loadEfetividadeExcel() {
+        const icon = document.getElementById('icon-refresh');
+        icon.classList.add('spin');
+        setTimeout(() => icon.classList.remove('spin'), 520);
+
+        fetch('EFETIVIDADE.xlsx')
+            .then(r => { if (!r.ok) throw new Error(); return r.arrayBuffer(); })
+            .then(buf => {
+                const wb = XLSX.read(new Uint8Array(buf), { type: 'array' });
+                rawEfetividadeData = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: "" });
+                buildDropdowns();
+                applyEfetividadeFilters();
+            })
+            .catch(() => {
+                document.getElementById('table-checkin-body').innerHTML = `<tr><td colspan="7"><div class="empty-state">
+                    <i class="fa-solid fa-circle-exclamation" style="color:var(--vermelho);opacity:1"></i>
+                    <p style="color:var(--vermelho);">Arquivo <strong>EFETIVIDADE.xlsx</strong> não encontrado. Use um servidor local.</p>
+                </div></td></tr>`;
+            });
+    }
+
+    function formatExcelDate(v) {
+        if (!v) return '-';
+        if (typeof v === 'number') {
+            const d = new Date((v - 25569) * 86400 * 1000);
+            d.setMinutes(d.getMinutes() + d.getTimezoneOffset());
+            return d.toLocaleDateString('pt-BR');
+        }
+        if (String(v).includes('-')) {
+            const p = String(v).split('T')[0].split('-');
+            if (p.length === 3) return `${p[2]}/${p[1]}/${p[0]}`;
+        }
+        return String(v);
+    }
+
+    function parseBrDate(s) {
+        const p = s.split('/');
+        return p.length === 3 ? new Date(+p[2], +p[1]-1, +p[0]) : new Date(0);
+    }
+
+    function getExcelMonthName(v) {
+        if (!v) return '';
+        if (typeof v === 'number') return nomeMeses[new Date((v-25569)*86400*1000).getMonth()];
+        if (String(v).includes('-')) { const p=String(v).split('T')[0].split('-'); if(p.length===3) return nomeMeses[+p[1]-1]||''; }
+        const b=String(v).split('/'); if(b.length===3) return nomeMeses[+b[1]-1]||'';
+        return '';
+    }
+
+    function calcMetrics(data) {
+        document.getElementById('count-total-pdvs').innerText = data.length;
+        document.getElementById('count-total-cidades').innerText = new Set(data.map(i=>i['CIDADE']).filter(Boolean)).size;
+        document.getElementById('count-total-promotores').innerText = new Set(data.map(i=>i['PROMOTOR(A)']).filter(Boolean)).size;
+        document.getElementById('count-total-obs').innerText = data.filter(i=>String(i['OBSERVAÇÃO']||'').trim()).length;
+
+        const datas = data.map(i=>formatExcelDate(i['DATA'])).filter(d=>d!=='-');
+        let periodo = 'Sem registros';
+        if (datas.length) {
+            const sorted = datas.map(parseBrDate).sort((a,b)=>a-b);
+            const min = sorted[0].toLocaleDateString('pt-BR');
+            const max = sorted[sorted.length-1].toLocaleDateString('pt-BR');
+            periodo = min===max ? min : `${min} — ${max}`;
+        }
+        ['periodo-total-pdvs','periodo-total-cidades','periodo-total-promotores','periodo-total-obs']
+            .forEach(id => document.getElementById(id).innerText = `Período: ${periodo}`);
+    }
+
+    function buildDropdowns() {
+        fillSelect('filter-mes',    [...new Set(rawEfetividadeData.map(i=>getExcelMonthName(i['DATA'])).filter(Boolean))],           'Todos os Meses');
+        fillSelect('filter-data',   [...new Set(rawEfetividadeData.map(i=>formatExcelDate(i['DATA'])).filter(v=>v!=='-'))].sort().reverse(), 'Todas as Datas');
+        fillSelect('filter-cidade', [...new Set(rawEfetividadeData.map(i=>i['CIDADE']).filter(Boolean))].sort(),                     'Todas');
+        fillSelect('filter-pessoa', [...new Set(rawEfetividadeData.map(i=>i['PROMOTOR(A)']).filter(Boolean))].sort(),                'Todos');
+    }
+
+    function fillSelect(id, vals, label) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.innerHTML = `<option value="">${label}</option>` + vals.map(v=>`<option value="${v}">${v}</option>`).join('');
+    }
+
+    function applyEfetividadeFilters() {
+        const s = document.getElementById('search-input').value.toLowerCase();
+        const mes = document.getElementById('filter-mes').value;
+        const data = document.getElementById('filter-data').value;
+        const cidade = document.getElementById('filter-cidade').value;
+        const pessoa = document.getElementById('filter-pessoa').value;
+
+        const f = rawEfetividadeData.filter(i =>
+            (String(i['LOJA']||'').toLowerCase().includes(s) || String(i['OBSERVAÇÃO']||'').toLowerCase().includes(s)) &&
+            (!mes    || getExcelMonthName(i['DATA'])===mes) &&
+            (!data   || formatExcelDate(i['DATA'])===data) &&
+            (!cidade || String(i['CIDADE']||'')===cidade) &&
+            (!pessoa || String(i['PROMOTOR(A)']||'')===pessoa)
+        );
+
+        calcMetrics(f);
+        renderTable(f);
+    }
+
+    function clearEfetividadeFilters() {
+        ['search-input','filter-mes','filter-data','filter-cidade','filter-pessoa'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+        applyEfetividadeFilters();
+    }
+
+    function buildCheckinHTML(raw) {
+        const t = String(raw||'').trim();
+        if (!t || t==='-' || t.toUpperCase()==='SEM CHECK-IN')
+            return `<span class="badge no-checkin"><i class="fa-solid fa-ban" style="font-size:9px"></i>Sem Check-in</span>`;
+
+        const parts = t.split(/[\n\r]+|\s{2,}/).map(p=>p.trim()).filter(Boolean);
+        if (parts.length > 1) {
+            return `<div class="checkin-stack">${parts.map((h,i)=>`
+                <span class="badge ${i===0?'entrada':'saida'}">
+                    <i class="fa-solid ${i===0?'fa-arrow-right-to-bracket':'fa-arrow-right-from-bracket'}" style="font-size:9px"></i>
+                    <span style="font-size:9px;font-family:'Plus Jakarta Sans',sans-serif;opacity:.7">${i===0?'ENT':'SAÍ'}</span>${h}
+                </span>`).join('')}</div>`;
+        }
+        return `<span class="badge hora-single"><i class="fa-regular fa-clock" style="font-size:10px"></i>${t}</span>`;
+    }
+
+    function renderTable(data) {
+        const tbody = document.getElementById('table-checkin-body');
+        if (!data.length) {
+            tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="fa-solid fa-magnifying-glass"></i><p>Nenhum registro encontrado com os filtros selecionados.</p></div></td></tr>`;
+            return;
+        }
+        tbody.innerHTML = data.map(item => {
+            const obs = item['OBSERVAÇÃO'] || '';
+            return `<tr>
+                <td class="td-date">${formatExcelDate(item['DATA'])}</td>
+                <td class="td-rota">${item['ROTA']||'—'}</td>
+                <td>${item['CIDADE']||'—'}</td>
+                <td class="td-loja" title="${item['LOJA']||''}">${item['LOJA']||'—'}</td>
+                <td class="td-promotor">${item['PROMOTOR(A)']||'—'}</td>
+                <td style="text-align:center">${buildCheckinHTML(item['STATUS'])}</td>
+                <td>${obs ? `<span class="obs-text">${obs}</span>` : `<span class="obs-none">Nenhuma ocorrência</span>`}</td>
+            </tr>`;
+        }).join('');
+    }
+</script>
+</body>
+</html>
