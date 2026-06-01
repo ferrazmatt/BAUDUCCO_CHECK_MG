@@ -42,6 +42,106 @@
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+
+        /* Substitua ou adicione estas regras no final do seu bloco <style> */
+
+@media (max-width: 768px) {
+    /* 1. Ajuste do Topo (Header) para empilhar elementos */
+    header {
+        position: relative; /* Remove o sticky que ocupa muito espaço no celular */
+    }
+    .header-inner {
+        height: auto;
+        flex-direction: column;
+        padding: 15px;
+        gap: 12px;
+        text-align: center;
+    }
+    .header-title {
+        order: 2; /* Organiza a ordem visual */
+    }
+    .btn-refresh {
+        width: 100%;
+        justify-content: center;
+        order: 3;
+    }
+
+    /* 2. Ajuste dos Filtros para ocuparem a largura total */
+    .filter-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .filter-group, .filter-group.search {
+        width: 100%;
+    }
+    .btn-clear {
+        width: 100%;
+        justify-content: center;
+        margin-top: 5px;
+    }
+
+    /* 3. Transformação da Tabela em Cards Visuais */
+    /* Esconde o cabeçalho original da tabela */
+    table, thead, tbody, th, td, tr { 
+        display: block; 
+    }
+    thead tr { 
+        position: absolute; 
+        top: -9999px; 
+        left: -9999px; 
+    }
+    
+    tbody tr {
+        margin-bottom: 15px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        background: var(--white) !important;
+        padding: 10px;
+        box-shadow: var(--shadow-sm);
+    }
+
+    td {
+        border: none;
+        position: relative;
+        padding-left: 45% !important; /* Cria espaço para a "etiqueta" na esquerda */
+        text-align: left;
+        white-space: normal !important;
+        max-width: none !important;
+        margin-bottom: 6px;
+    }
+
+    /* Cria o título da coluna dinamicamente antes do dado */
+    td::before {
+        position: absolute;
+        left: 12px;
+        width: 40%;
+        padding-right: 10px;
+        white-space: nowrap;
+        font-size: 10px;
+        font-weight: 800;
+        text-transform: uppercase;
+        color: var(--text-3);
+    }
+
+    /* Define o texto de cada etiqueta simulando as colunas */
+    td:nth-of-type(1)::before { content: "Data"; }
+    td:nth-of-type(2)::before { content: "Rota"; }
+    td:nth-of-type(3)::before { content: "Cidade"; }
+    td:nth-of-type(4)::before { content: "PDV / Loja"; }
+    td:nth-of-type(5)::before { content: "Promotor(a)"; }
+    td:nth-of-type(6)::before { content: "Check-in"; }
+    td:nth-of-type(7)::before { content: "Observações"; }
+
+    /* Ajustes finos de alinhamento para o formato card */
+    td:nth-of-type(6) {
+        display: flex;
+        align-items: center;
+    }
+    .checkin-stack {
+        align-items: flex-start;
+    }
+}
+
         body {
             background: var(--page-bg);
             color: var(--text-1);
@@ -684,13 +784,24 @@
         return p.length === 3 ? new Date(+p[2], +p[1]-1, +p[0]) : new Date(0);
     }
 
-    function getExcelMonthName(v) {
-        if (!v) return '';
-        if (typeof v === 'number') return nomeMeses[new Date((v-25569)*86400*1000).getMonth()];
-        if (String(v).includes('-')) { const p=String(v).split('T')[0].split('-'); if(p.length===3) return nomeMeses[+p[1]-1]||''; }
-        const b=String(v).split('/'); if(b.length===3) return nomeMeses[+b[1]-1]||'';
-        return '';
+function getExcelMonthName(v) {
+    if (!v) return '';
+    // Se for número do Excel
+    if (typeof v === 'number') return nomeMeses[new Date((v-25569)*86400*1000).getMonth()];
+    
+    const strV = String(v).trim();
+    // Se for formato ISO (AAAA-MM-DD)
+    if (strV.includes('-')) { 
+        const p = strV.split('T')[0].split('-'); 
+        if (p.length === 3) return nomeMeses[parseInt(p[1], 10) - 1] || ''; 
     }
+    // Se for formato Brasileiro (DD/MM/AAAA)
+    if (strV.includes('/')) {
+        const b = strV.split('/'); 
+        if (b.length === 3) return nomeMeses[parseInt(b[1], 10) - 1] || ''; 
+    }
+    return '';
+}
 
     function calcMetrics(data) {
         document.getElementById('count-total-pdvs').innerText = data.length;
@@ -710,12 +821,40 @@
             .forEach(id => document.getElementById(id).innerText = `Período: ${periodo}`);
     }
 
-    function buildDropdowns() {
-        fillSelect('filter-mes',    [...new Set(rawEfetividadeData.map(i=>getExcelMonthName(i['DATA'])).filter(Boolean))],           'Todos os Meses');
-        fillSelect('filter-data',   [...new Set(rawEfetividadeData.map(i=>formatExcelDate(i['DATA'])).filter(v=>v!=='-'))].sort().reverse(), 'Todas as Datas');
-        fillSelect('filter-cidade', [...new Set(rawEfetividadeData.map(i=>i['CIDADE']).filter(Boolean))].sort(),                     'Todas');
-        fillSelect('filter-pessoa', [...new Set(rawEfetividadeData.map(i=>i['PROMOTOR(A)']).filter(Boolean))].sort(),                'Todos');
-    }
+function buildDropdowns(dadosAtuais = rawEfetividadeData) {
+    // 1. O Mês sempre mostra todos os meses disponíveis no arquivo original para o usuário poder navegar
+    const mesesPresentes = [...new Set(rawEfetividadeData.map(i => {
+        const dataFormatada = formatExcelDate(i['DATA']);
+        if (dataFormatada && dataFormatada.includes('/')) {
+            const mesNum = parseInt(dataFormatada.split('/')[1], 10);
+            return nomeMeses[mesNum - 1];
+        }
+        return null;
+    }).filter(Boolean))];
+    mesesPresentes.sort((a, b) => nomeMeses.indexOf(a) - nomeMeses.indexOf(b));
+    
+    // Pegamos o valor que já estava selecionado para não perdê-lo ao reconstruir
+    const antigoMes = document.getElementById('filter-mes').value;
+    fillSelect('filter-mes', mesesPresentes, 'Todos os Meses');
+    if(antigoMes) document.getElementById('filter-mes').value = antigoMes;
+
+    // 2. A DATA agora é DINÂMICA: só mostra as datas dos dados que passarem pelo filtro de mês/busca
+    const datasPresentes = [...new Set(dadosAtuais.map(i => formatExcelDate(i['DATA'])).filter(v => v !== '-'))].sort().reverse();
+    const antigaData = document.getElementById('filter-data').value;
+    fillSelect('filter-data', datasPresentes, 'Todas as Datas');
+    if(antigaData && datasPresentes.includes(antigaData)) document.getElementById('filter-data').value = antigaData;
+
+    // 3. Cidades e Pessoas também viram dinâmicos (opcional, mas evita erros de filtros vazios)
+    const antigaCidade = document.getElementById('filter-cidade').value;
+    const cidadesPresentes = [...new Set(dadosAtuais.map(i => i['CIDADE']).filter(Boolean))].sort();
+    fillSelect('filter-cidade', cidadesPresentes, 'Todas');
+    if(antigaCidade && cidadesPresentes.includes(antigaCidade)) document.getElementById('filter-cidade').value = antigaCidade;
+
+    const antigaPessoa = document.getElementById('filter-pessoa').value;
+    const pessoasPresentes = [...new Set(dadosAtuais.map(i => i['PROMOTOR(A)']).filter(Boolean))].sort();
+    fillSelect('filter-pessoa', pessoasPresentes, 'Todos');
+    if(antigaPessoa && pessoasPresentes.includes(antigaPessoa)) document.getElementById('filter-pessoa').value = antigaPessoa;
+}
 
     function fillSelect(id, vals, label) {
         const el = document.getElementById(id);
@@ -723,29 +862,51 @@
         el.innerHTML = `<option value="">${label}</option>` + vals.map(v=>`<option value="${v}">${v}</option>`).join('');
     }
 
-    function applyEfetividadeFilters() {
-        const s = document.getElementById('search-input').value.toLowerCase();
-        const mes = document.getElementById('filter-mes').value;
-        const data = document.getElementById('filter-data').value;
-        const cidade = document.getElementById('filter-cidade').value;
-        const pessoa = document.getElementById('filter-pessoa').value;
+function applyEfetividadeFilters() {
+    const s = document.getElementById('search-input').value.toLowerCase();
+    const mesSelecionado = document.getElementById('filter-mes').value;
+    const data = document.getElementById('filter-data').value;
+    const cidade = document.getElementById('filter-cidade').value;
+    const pessoa = document.getElementById('filter-pessoa').value;
 
-        const f = rawEfetividadeData.filter(i =>
-            (String(i['LOJA']||'').toLowerCase().includes(s) || String(i['OBSERVAÇÃO']||'').toLowerCase().includes(s)) &&
-            (!mes    || getExcelMonthName(i['DATA'])===mes) &&
-            (!data   || formatExcelDate(i['DATA'])===data) &&
-            (!cidade || String(i['CIDADE']||'')===cidade) &&
-            (!pessoa || String(i['PROMOTOR(A)']||'')===pessoa)
-        );
+    // Primeiro passo: Filtrar os dados pelo Mês e pelo Termo de Busca (filtros macro)
+    const dadosFiltradosPorMesEBusca = rawEfetividadeData.filter(i => {
+        const atendeBusca = String(i['LOJA']||'').toLowerCase().includes(s) || String(i['OBSERVAÇÃO']||'').toLowerCase().includes(s);
+        
+        const dataFormatada = formatExcelDate(i['DATA']);
+        let atendeMes = true;
+        if (mesSelecionado && dataFormatada && dataFormatada.includes('/')) {
+            const mesNum = parseInt(dataFormatada.split('/')[1], 10);
+            atendeMes = (nomeMeses[mesNum - 1] === mesSelecionado);
+        } else if (mesSelecionado) {
+            atendeMes = false;
+        }
+        return atendeBusca && atendeMes;
+    });
 
-        calcMetrics(f);
-        renderTable(f);
-    }
+    // ATUALIZA OS DROPDOWNS DE DATA, CIDADE E PROMOTOR baseado apenas no mês selecionado!
+    buildDropdowns(dadosFiltradosPorMesEBusca);
 
-    function clearEfetividadeFilters() {
-        ['search-input','filter-mes','filter-data','filter-cidade','filter-pessoa'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-        applyEfetividadeFilters();
-    }
+    // Segundo passo: Aplicar os filtros específicos (Data, Cidade, Promotor) sobre o que sobrou
+    const f = dadosFiltradosPorMesEBusca.filter(i => {
+        const dataFormatada = formatExcelDate(i['DATA']);
+        const atendeData = !data || dataFormatada === data;
+        const atendeCidade = !cidade || String(i['CIDADE']||'') === cidade;
+        const atendePessoa = !pessoa || String(i['PROMOTOR(A)']||'') === pessoa;
+
+        return atendeData && atendeCidade && atendePessoa;
+    });
+
+    calcMetrics(f);
+    renderTable(f);
+}
+
+function clearEfetividadeFilters() {
+    ['search-input','filter-mes','filter-data','filter-cidade','filter-pessoa'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    // Força reset dos dropdowns para o estado original da planilha completa
+    buildDropdowns(rawEfetividadeData); 
+    applyEfetividadeFilters();
+}
 
     function buildCheckinHTML(raw) {
         const t = String(raw||'').trim();
